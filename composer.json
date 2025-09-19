@@ -1,0 +1,20 @@
+{
+  "name": "xsuperr/prpc",
+  "prefer-stable": true,
+  "minimum-stability": "dev",
+  "license": "proprietary",
+  "require": {
+    "grpc/grpc": "^1.74.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "xsuperr\\prpc\\": "xSuperr/pRPC"
+    }
+  },
+  "extra": {
+    "virion": {
+      "spec": "3.0",
+      "namespace-root": "xsuperr\\prpc"
+    }
+  }
+}
