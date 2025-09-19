@@ -38,7 +38,8 @@ class AsyncGRPCTask extends AsyncTask
             $jobs = unserialize($this->jobs);
 
             $results = [];
-
+            $calls = [];
+            
             /**
              * @var AsyncGRPCJob $job
              */
@@ -51,15 +52,19 @@ class AsyncGRPCTask extends AsyncTask
 
                     $method = $job->getMethod();
 
-                    [$response, $status] = $client->$method($request)->wait();
-
-                    if ($status->code === STATUS_OK) {
-                        $results[$job->getId()] = $response;
-                    } else {
-                        $results[$job->getId()] = "gRPC Error [$status->code]: $status->details";
-                    }
+                    $calls[] = $client->$method($request);
                 } catch (Throwable $e) {
                     $results[$job->getId()] = $e->getMessage();
+                }
+            }
+
+            foreach ($calls as $call) {
+                [$response, $status] = $call->wait();
+
+                if ($status->code === STATUS_OK) {
+                    $results[$job->getId()] = $response;
+                } else {
+                    $results[$job->getId()] = "gRPC Error [$status->code]: $status->details";
                 }
             }
 
