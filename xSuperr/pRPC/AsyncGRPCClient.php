@@ -4,77 +4,77 @@ namespace xSuperr\pRPC;
 
 use Grpc\ChannelCredentials;
 use pocketmine\plugin\PluginBase;
-use pocketmine\scheduler\AsyncPool;
 use pocketmine\scheduler\ClosureTask;
-use pocketmine\scheduler\TaskScheduler;
-use Ramsey\Uuid\Uuid;
-use SOFe\AwaitGenerator\Channel;
 use xSuperr\Promise\BetterPromise;
 use xSuperr\Promise\BetterPromiseResolver;
-use xSuperr\pRPC\task\AsyncGRPCJob;
-use xSuperr\pRPC\task\AsyncGRPCTask;
+use xSuperr\Promise\PromiseManager;
+use xSuperr\pRPC\thread\GRPCThread;
 
 abstract class AsyncGRPCClient {
-    protected array $pendingJobs = [];
-    protected array $pendingResolvers = [];
+    private PromiseManager $manager;
 
-    protected AsyncPool $pool;
+    private bool $running;
+    private GRPCThread $thread;
 
-    public function __construct(PluginBase $plugin, private int $flushInterval = 1) {
+    public function __construct(PluginBase $plugin) {
         ChannelCredentials::setDefaultRootsPem($plugin->getResourceFolder() . 'roots.pem');
 
-        $this->pool = $plugin->getServer()->getAsyncPool();
-        $this->startFlushTask($plugin->getScheduler());
-    }
+        $this->manager = new PromiseManager();
+        $plugin->getScheduler()->scheduleRepeatingTask(new ClosureTask(fn() => $this->manager->checkTimeouts()), 20);
 
-    private function startFlushTask(TaskScheduler $scheduler): void
-    {
-        $scheduler->scheduleRepeatingTask(new ClosureTask(function (): void {
-            if (!empty($this->pendingJobs)) {
-                $resolver = new BetterPromiseResolver();
+        $sleeperHandlerEntry = $plugin->getServer()->getTickSleeper()->addNotifier(function () {
+            if (!$this->running) return;
 
-                $task = new AsyncGRPCTask($this->getClientClass(), $this->getHost(), $this->getClientOptions(), $this->pendingJobs, $resolver);
-                $this->pool->submitTask($task);
-                $this->pendingJobs = [];
-
-                $pendingResolvers = $this->pendingResolvers;
-                $this->pendingResolvers = [];
-
-                $resolver->getPromise()->then(function (?array $results) use ($pendingResolvers): void {
-                    if ($results === null) {
-                        foreach ($pendingResolvers as $resolver) {
-                            $resolver->reject();
-                        }
-                    } else {
-                        foreach ($results as $id => $result) {
-                            if (isset($pendingResolvers[$id])) {
-                                $pendingResolvers[$id]->resolve($result);
-                                unset($pendingResolvers[$id]);
-                            }
-                        }
-
-                        foreach ($pendingResolvers as $resolver) {
-                            $resolver->reject();
-                        }
-                    }
-                });
+            $results = $this->thread->getResults();
+            foreach ($results as $result) {
+                $result = unserialize($result);
+                $this->manager->resolve($result['id'], $result['value']);
             }
-        }), $this->flushInterval);
+        });
+
+        $this->thread = new GRPCThread($this->getClientClass(), $this->getHost(), $this->getClientOptions(), $sleeperHandlerEntry);
+        $this->running = true;
     }
 
     abstract protected function getHost(): string;
     abstract protected function getClientClass(): string;
     abstract protected function getClientOptions(): array;
 
-    protected function submitGRPCJob(string $requestClass, string $requestData, string $method): BetterPromise
+    public function quit(): void
     {
-        $resolver = new BetterPromiseResolver();
+        if (!$this->running) return;
 
-        $id = Uuid::uuid4()->getBytes();
-        while (isset($this->pendingJobs[$id])) $id = Uuid::uuid4()->getBytes();
+        $this->waitAll();
+        $this->thread->quit();
+        $this->running = false;
+    }
 
-        $this->pendingJobs[$id] = new AsyncGRPCJob($id, $method, $requestClass, $requestData);
-        $this->pendingResolvers[$id] = $resolver;
-        return $resolver->getPromise();
+    public function isRunning(): bool
+    {
+        return $this->running;
+    }
+
+    /**
+     * Freezes main thread until all data is flushed
+     */
+    public function waitAll(): void
+    {
+        if (!$this->running) return;
+
+        while($this->thread->getWaiting() > 0) usleep(5000);
+    }
+
+    protected function submitGRPCJob(string $requestClass, string $requestData, string $method, int $timeout = 5): BetterPromise
+    {
+        if (!$this->running) {
+            $resolver = new BetterPromiseResolver();
+            $resolver->reject(new \Exception('gRPC client is not running'));
+            return $resolver->getPromise();
+        }
+
+        [$id, $promise] = $this->manager->createPromise($timeout);
+
+        $this->thread->queue($id, $requestClass, $requestData, $method);
+        return $promise;
     }
 }
