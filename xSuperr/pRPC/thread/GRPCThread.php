@@ -119,7 +119,7 @@ class GRPCThread extends Thread
 
                 $calls[$id] = $client->$method($request);
             } catch (Throwable $e) {
-                $results[$id] = ['result' => $e->getMessage(), 'ok' => false];
+                $results[$id] = ['result' => "job exec: " .$e->getMessage(), 'ok' => false];
             }
         }
 
