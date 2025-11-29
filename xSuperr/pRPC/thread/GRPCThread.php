@@ -82,6 +82,8 @@ class GRPCThread extends Thread
             $c = new $this->clientClass($this->host, unserialize($this->clientOptions));
             if ($c instanceof BaseStub) return $c;
         } catch (\Throwable $e) {
+            echo "err\n";
+            var_dump($e);
             return null;
         }
 
@@ -107,19 +109,26 @@ class GRPCThread extends Thread
 
         foreach ($jobs as $job) {
             $id = $job['id'];
+            var_dump($job['id']);
             try {
                 $class = $job['class'];
+                var_dump($class);
 
                 $request = new $class();
                 $request->mergeFromString($job['data']);
+                var_dump($request);
 
                 $method = $job['method'];
+                var_dump($method);
 
                 if ($client === null) throw new \Exception('Client is null');
 
-                $calls[$id] = $client->$method($request, []);
+                var_dump($client);
+
+                $calls[$id] = $client->$method($request);
             } catch (Throwable $e) {
-                $results[$id] = ['result' => "job exec: " .$e->getMessage(), 'ok' => false];
+                var_dump($e);
+                //$results[$id] = ['result' => "job exec: " . $e->getMessage(), 'ok' => false];
             }
         }
 
