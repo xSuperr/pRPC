@@ -157,6 +157,8 @@ class GRPCThread extends Thread
             }
         }
 
+        var_dump($results);
+
         foreach ($results as $id => $data) {
             $this->results[] = serialize([
                 'id' => $id,
