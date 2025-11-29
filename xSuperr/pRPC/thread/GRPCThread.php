@@ -107,13 +107,17 @@ class GRPCThread extends Thread
 
         foreach ($jobs as $job) {
             $id = $job['id'];
+            var_dump($job['id']);
             try {
                 $class = $job['class'];
+                var_dump($class);
 
                 $request = new $class();
                 $request->mergeFromString($job['data']);
+                var_dump($request);
 
                 $method = $job['method'];
+                var_dump($method);
 
                 if ($client === null) throw new \Exception('Client is null');
 
