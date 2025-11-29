@@ -28,7 +28,7 @@ abstract class AsyncGRPCClient {
             $results = $this->thread->getResults();
             foreach ($results as $result) {
                 $result = unserialize($result);
-                $this->manager->resolve($result['id'], $result['value']);
+                $this->manager->resolve($result['id'], $result['result']);
             }
         });
 
