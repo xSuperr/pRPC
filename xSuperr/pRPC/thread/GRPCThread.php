@@ -166,6 +166,8 @@ class GRPCThread extends Thread
                 'ok' => $data['ok'],
             ]);
         }
+
+       var_dump($this->results);
     }
 
     private function isShutdownError(string $str): bool {
