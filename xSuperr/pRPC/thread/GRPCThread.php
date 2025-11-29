@@ -88,7 +88,8 @@ class GRPCThread extends Thread
         return null;
     }
 
-    private function processQueue(?BaseStub &$client): void {
+    private function processQueue(?BaseStub &$client): void
+    {
         $jobs = [];
 
         foreach ($this->queue as $k => $serialized) {
@@ -133,9 +134,9 @@ class GRPCThread extends Thread
 
                 } else {
                     if ($status->code === STATUS_UNAVAILABLE || $this->isShutdownError($status->details)) $client = $this->initClient();
-                    
-                    $data['result'] = "gRPC Error [$status->code]: $status->details"
-                    }
+
+                    $data['result'] = "gRPC Error [$status->code]: $status->details";
+                }
                 $results[$id] = $data;
             } catch (\Throwable $e) {
                 $data['result'] = "Wait Exception: " . $e->getMessage();
