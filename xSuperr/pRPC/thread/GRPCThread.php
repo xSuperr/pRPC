@@ -2,6 +2,7 @@
 
 namespace xSuperr\pRPC\thread;
 
+use Google\Protobuf\Internal\Message;
 use Grpc\BaseStub;
 use pocketmine\snooze\SleeperHandlerEntry;
 use pocketmine\thread\Thread;
@@ -82,8 +83,6 @@ class GRPCThread extends Thread
             $c = new $this->clientClass($this->host, unserialize($this->clientOptions));
             if ($c instanceof BaseStub) return $c;
         } catch (\Throwable $e) {
-            echo "err\n";
-            var_dump($e);
             return null;
         }
 
@@ -109,26 +108,19 @@ class GRPCThread extends Thread
 
         foreach ($jobs as $job) {
             $id = $job['id'];
-            var_dump($job['id']);
             try {
                 $class = $job['class'];
-                var_dump($class);
 
                 $request = new $class();
                 $request->mergeFromString($job['data']);
-                var_dump($request);
 
                 $method = $job['method'];
-                var_dump($method);
 
                 if ($client === null) throw new \Exception('Client is null');
 
-                var_dump($client);
-
                 $calls[$id] = $client->$method($request);
             } catch (Throwable $e) {
-                var_dump($e);
-                //$results[$id] = ['result' => "job exec: " . $e->getMessage(), 'ok' => false];
+                $results[$id] = ['result' => "job exec: " . $e->getMessage(), 'ok' => false];
             }
         }
 
@@ -157,17 +149,17 @@ class GRPCThread extends Thread
             }
         }
 
-        var_dump($results);
-
         foreach ($results as $id => $data) {
+            $resp = $data['result'];
+            if ($resp instanceof Message) $result = ['m' => $resp->serializeToString(), 'c' => $resp::class];
+            else $result = ['m' => $resp];
+
             $this->results[] = serialize([
                 'id' => $id,
-                'result' => $data['result'],
+                'result' => $result,
                 'ok' => $data['ok'],
             ]);
         }
-
-       var_dump($this->results);
     }
 
     private function isShutdownError(string $str): bool {
