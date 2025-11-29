@@ -2,6 +2,7 @@
 
 namespace xSuperr\pRPC;
 
+use Exception;
 use Grpc\ChannelCredentials;
 use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
@@ -30,7 +31,7 @@ abstract class AsyncGRPCClient {
                 $result = unserialize($result);
                 $ok = $result["ok"];
                 if ($ok) $this->manager->resolve($result['id'], $result['result']);
-                else $this->manager->reject($result['id'], $result['result']);
+                else $this->manager->reject($result['id'], new Exception($result['result']));
             }
         });
 
