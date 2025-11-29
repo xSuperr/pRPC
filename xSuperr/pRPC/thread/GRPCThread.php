@@ -118,7 +118,7 @@ class GRPCThread extends Thread
 
                 $calls[$id] = $client->$method($request);
             } catch (Throwable $e) {
-                $results[$id] = $e->getMessage();
+                $results[$id] = ['result' => $e->getMessage(), 'ok' => false];
             }
         }
 
@@ -126,14 +126,20 @@ class GRPCThread extends Thread
             try {
                 [$response, $status] = $call->wait();
 
+                $data = ['ok' => false];
                 if ($status->code === STATUS_OK) {
-                    $results[$id] = $response;
+                    $data['result'] = $response;
+                    $data['ok'] = true;
+
                 } else {
                     if ($status->code === STATUS_UNAVAILABLE || $this->isShutdownError($status->details)) $client = $this->initClient();
-                    $results[$id] = "gRPC Error [$status->code]: $status->details";
-                }
+                    
+                    $data['result'] = "gRPC Error [$status->code]: $status->details"
+                    }
+                $results[$id] = $data;
             } catch (\Throwable $e) {
-                $results[$id] = "Wait Exception: " . $e->getMessage();
+                $data['result'] = "Wait Exception: " . $e->getMessage();
+                $results[$id] = $data;
 
                 if ($this->isShutdownError($e->getMessage())) {
                     $client = $this->initClient();
@@ -141,10 +147,11 @@ class GRPCThread extends Thread
             }
         }
 
-        foreach ($results as $id => $value) {
+        foreach ($results as $id => $data) {
             $this->results[] = serialize([
                 'id' => $id,
-                'result' => $value
+                'result' => $data['result'],
+                'ok' => $data['ok'],
             ]);
         }
     }
