@@ -5,7 +5,7 @@ namespace xSuperr\pRPC;
 use Grpc\ChannelCredentials;
 use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
-use pRPC\thread\GRPCThread;
+use xSuperr\pRPC\thread\GRPCThread;
 use xSuperr\Promise\BetterPromise;
 use xSuperr\Promise\BetterPromiseResolver;
 use xSuperr\Promise\PromiseManager;
