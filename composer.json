@@ -14,7 +14,7 @@
   "extra": {
     "virion": {
       "spec": "3.0",
-      "namespace-root": "xsuperr\\prpc"
+      "namespace-root": "xSuperr\\pRPC"
     }
   }
 }
