@@ -5,10 +5,10 @@ namespace xSuperr\pRPC;
 use Grpc\ChannelCredentials;
 use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
+use pRPC\thread\GRPCThread;
 use xSuperr\Promise\BetterPromise;
 use xSuperr\Promise\BetterPromiseResolver;
 use xSuperr\Promise\PromiseManager;
-use xSuperr\pRPC\thread\GRPCThread;
 
 abstract class AsyncGRPCClient {
     private PromiseManager $manager;
@@ -28,7 +28,9 @@ abstract class AsyncGRPCClient {
             $results = $this->thread->getResults();
             foreach ($results as $result) {
                 $result = unserialize($result);
-                $this->manager->resolve($result['id'], $result['result']);
+                $ok = $result["ok"];
+                if ($ok) $this->manager->resolve($result['id'], $result['result']);
+                else $this->manager->reject($result['id'], $result['result']);
             }
         });
 
