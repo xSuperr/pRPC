@@ -3,6 +3,7 @@
 namespace xSuperr\pRPC;
 
 use Exception;
+use Google\Protobuf\Internal\Message;
 use Grpc\ChannelCredentials;
 use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\ClosureTask;
@@ -29,9 +30,30 @@ abstract class AsyncGRPCClient {
             $results = $this->thread->getResults();
             foreach ($results as $result) {
                 $result = unserialize($result);
-                $ok = $result["ok"];
-                if ($ok) $this->manager->resolve($result['id'], $result['result']);
-                else $this->manager->reject($result['id'], new Exception($result['result']));
+                $resp = $result['result'];
+                $c = $resp['c'] ?? null;
+
+                $message = null;
+                $cont = true;
+                if ($c !== null) {
+                    try {
+                        $msg = new $c();
+                        if ($msg instanceof Message) {
+                            $msg->mergeFromString($resp['m']);
+                            $message = $msg;
+                        }
+                    } catch (\Throwable $e) {
+                        $cont = false;
+                        $this->manager->reject($result['id'], $e);
+                    }
+                } else $message = $resp['m'];
+
+                if ($message === null) $this->manager->reject($result['id'], new Exception('Message is null'));
+                else if ($cont) {
+                    $ok = $result["ok"];
+                    if ($ok) $this->manager->resolve($result['id'], $message);
+                    else $this->manager->reject($result['id'], new Exception($message));
+                }
             }
         });
 
