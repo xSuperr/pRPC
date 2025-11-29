@@ -4,7 +4,7 @@
   "minimum-stability": "dev",
   "license": "proprietary",
   "require": {
-    "grpc/grpc": "^1.74.0"
+    "grpc/grpc": "^1.58.1"
   },
   "autoload": {
     "psr-4": {
