@@ -89,7 +89,7 @@ abstract class AsyncGRPCClient {
         while($this->thread->getWaiting() > 0) usleep(5000);
     }
 
-    protected function submitGRPCJob(string $requestClass, string $requestData, string $method, int $timeout = 5): BetterPromise
+    protected function submitGRPCJob(Message $req, string $method, int $timeout = 5): BetterPromise
     {
         if (!$this->running) {
             $resolver = new BetterPromiseResolver();
@@ -99,7 +99,7 @@ abstract class AsyncGRPCClient {
 
         [$id, $promise] = $this->manager->createPromise($timeout);
 
-        $this->thread->queue($id, $requestClass, $requestData, $method);
+        $this->thread->queue($id, $req::class, $req->serializeToString(), $method);
         return $promise;
     }
 }
